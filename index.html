@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background-color: #4169E1;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            /* Add relative positioning */
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+        }
+
+        /* Language Switch Styles */
+        #language-switch {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            color: white;
+        }
+
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section-title {
+            color: #4169E1;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .form-col {
+            flex: 1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .required:after {
+            content: " *";
+            color: red;
+        }
+
+        .btn {
+            background-color: #4169E1;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover {
+            background-color: #3a5ecc;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+
+        .logo-upload {
+            margin-bottom: 15px;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        table th,
+        table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+        }
+
+        .item-row td:last-child {
+            text-align: center;
+        }
+
+        .total-row {
+            text-align: right;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .total-amount {
+            color: #4169E1;
+            font-size: 18px;
+        }
+
+        .amount-words {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .footer span {
+            color: red;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+    <!-- jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Invoice Generator</h1>
+            <p id="header-description">Create professional invoices quickly and easily</p>
+            <div id="language-switch">A/அ</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" id="invoice-details-title">Invoice Details</div>
+
+            <div class="logo-upload">
+                <button class="btn" id="uploadLogoBtn">Upload Your Logo</button>
+                <input type="file" id="logoInput" style="display: none;" accept="image/*">
+                <p class="upload-hint" id="logo-hint">Recommended size: 200×80px, Max file size: 1MB</p>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="currency" class="required" id="currency-label">Select Currency</label>
+                    <select id="currency" required>
+                        <option value="₹">Rupee (₹)</option>
+                        <option value="$">Dollar ($)</option>
+                        <option value="€">Euro (€)</option>
+                        <option value="£">Pound (£)</option>
+                    </select>
+                </div>
+                <div class="form-col"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="invoiceNumber" class="required" id="invoice-number-label">Invoice Number</label>
+                    <input type="text" id="invoiceNumber" placeholder="e.g. INV-001" required>
+                </div>
+                <div class="form-col">
+                    <label for="dueDate" class="required" id="due-date-label">Due Date</label>
+                    <input type="date" id="dueDate" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="invoiceDate" class="required" id="invoice-date-label">Invoice Date</label>
+                    <input type="date" id="invoiceDate" required>
+                </div>
+                <div class="form-col"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="section-title" id="from-sender-title">From (Sender)</div>
+                    <div class="form-group">
+                        <label for="senderName" class="required" id="sender-name-label">Name/Company</label>
+                        <input type="text" id="senderName" placeholder="Your name or company name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="senderAddress" id="sender-address-label">Address</label>
+                        <textarea id="senderAddress" placeholder="Your full address"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="senderPhone" id="sender-phone-label">Phone</label>
+                        <input type="tel" id="senderPhone" placeholder="Your phone number">
+                    </div>
+                    <div class="form-group">
+                        <label for="senderEmail" id="sender-email-label">Email</label>
+                        <input type="email" id="senderEmail" placeholder="Your email address">
+                    </div>
+                    <div class="form-group">
+                        <label for="senderGST" id="sender-gst-label">GST Number</label>
+                        <input type="text" id="senderGST" placeholder="Your GST number (optional)">
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="section-title" id="to-recipient-title">To (Recipient)</div>
+                    <div class="form-group">
+                        <label for="recipientName" class="required" id="recipient-name-label">Name/Company</label>
+                        <input type="text" id="recipientName" placeholder="Client name or company name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="recipientAddress" id="recipient-address-label">Address</label>
+                        <textarea id="recipientAddress" placeholder="Client's full address"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="recipientPhone" id="recipient-phone-label">Phone</label>
+                        <input type="tel" id="recipientPhone" placeholder="Client's phone number">
+                    </div>
+                    <div class="form-group">
+                        <label for="recipientEmail" id="recipient-email-label">Email</label>
+                        <input type="email" id="recipientEmail" placeholder="Client's email address">
+                    </div>
+                    <div class="form-group">
+                        <label for="recipientGST" id="recipient-gst-label">GST Number</label>
+                        <input type="text" id="recipientGST" placeholder="Client's GST number (optional)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" id="invoice-items-title">Invoice Items</div>
+            <table id="itemsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;" id="sl-no-header">Sl No.</th>
+                        <th style="width: 25%;" id="description-header">Description</th>
+                        <th style="width: 15%;" id="hsn-code-header">HSN Code</th>
+                        <th style="width: 10%;" id="quantity-header">Quantity</th>
+                        <th style="width: 10%;" id="price-header">Price (₹)</th>
+                        <th style="width: 10%;" id="gst-percent-header">GST %</th>
+                        <th style="width: 15%;" id="gst-amount-header">GST Amt</th>
+                        <th style="width: 15%;" id="amount-header">Amount (₹)</th>
+                        <th style="width: 5%;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="item-row">
+                        <td>1</td>
+                        <td><input type="text" placeholder="Item description"></td>
+                        <td><input type="text" placeholder="HSN code"></td>
+                        <td><input type="number" value="1" min="1" class="qty"></td>
+                        <td><input type="number" value="0" min="0" class="price"></td>
+                        <td><input type="number" value="0" min="0" max="100" class="gst-percent"></td>
+                        <td><input type="number" value="0.00" class="gst-amount" readonly></td>
+                        <td><input type="number" value="0.00" class="amount" readonly></td>
+                        <td><button class="btn btn-danger btn-sm delete-row">×</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button class="btn" id="addItemBtn">+ Add Item</button>
+
+            <div class="total-row" id="total-label">
+                Total: <span class="total-amount" id="totalAmount">₹0.00</span>
+            </div>
+            <div class="amount-words" id="amountInWords">Zero Rupees Only</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" id="banking-details-title">Banking Details</div>
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="bankName" id="bank-name-label">Bank Name</label>
+                    <input type="text" id="bankName" placeholder="e.g. State Bank of India">
+                </div>
+                <div class="form-col">
+                    <label for="accountNumber" id="account-number-label">Account Number</label>
+                    <input type="text" id="accountNumber" placeholder="Your bank account number">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="accountHolderName" id="account-holder-name-label">Account Holder Name</label>
+                    <input type="text" id="accountHolderName" placeholder="Name as per bank account">
+                </div>
+                <div class="form-col">
+                    <label for="ifscCode" id="ifsc-code-label">IFSC Code</label>
+                    <input type="text" id="ifscCode" placeholder="e.g. SBIN0001234">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-col">
+                    <label for="branchDetails" id="branch-details-label">Branch Details</label>
+                    <input type="text" id="branchDetails" placeholder="Branch name and address">
+                </div>
+                <div class="form-col">
+                    <label for="upiId" id="upi-id-label">UPI ID</label>
+                    <input type="text" id="upiId" placeholder="e.g. yourname@upi">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" id="additional-notes-title">Additional Notes</div>
+            <textarea id="additionalNotes" placeholder="Any additional notes, terms, or payment instructions"></textarea>
+        </div>
+
+        <div class="actions">
+            <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
+            <button class="btn btn-secondary" id="printInvoiceBtn">Print Invoice</button>
+        </div>
+
+        <div class="footer" id="footer-text">
+            Developed with <span>❤</span> by Nat
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Language switch functionality
+            const languageSwitch = document.getElementById('language-switch');
+            let isEnglish = true;
+
+            languageSwitch.addEventListener('click', function () {
+                isEnglish = !isEnglish;
+                updateContent(isEnglish);
+            });
+
+            function updateContent(isEnglish) {
+                languageSwitch.textContent = isEnglish ? 'A/அ' : 'அ/A';
+
+                // Header
+                document.getElementById('header-description').textContent = isEnglish ? 'Create professional invoices quickly and easily' : 'விரைவாகவும், எளிதாகவும் தொழில்முறை விலைப்பட்டியல்களை உருவாக்கவும்';
+
+                // Invoice Details Section
+                document.getElementById('invoice-details-title').textContent = isEnglish ? 'Invoice Details' : 'விலைப்பட்டியல் விவரங்கள்';
+                document.getElementById('logo-hint').textContent = isEnglish ? 'Recommended size: 200×80px, Max file size: 1MB' : 'பரிந்துரைக்கப்பட்ட அளவு: 200×80px, அதிகபட்ச கோப்பு அளவு: 1MB';
+                document.getElementById('currency-label').textContent = isEnglish ? 'Select Currency' : 'நாணயத்தைத் தேர்ந்தெடுக்கவும்';
+                document.getElementById('invoice-number-label').textContent = isEnglish ? 'Invoice Number' : 'விலைப்பட்டியல் எண்';
+                document.getElementById('due-date-label').textContent = isEnglish ? 'Due Date' : 'செலுத்த வேண்டிய தேதி';
+                document.getElementById('invoice-date-label').textContent = isEnglish ? 'Invoice Date' : 'விலைப்பட்டியல் தேதி';
+
+                // Sender/Recipient Section
+                document.getElementById('from-sender-title').textContent = isEnglish ? 'From (Sender)' : 'அனுப்புநர்';
+                document.getElementById('sender-name-label').textContent = isEnglish ? 'Name/Company' : 'பெயர் / நிறுவனம்';
+                document.getElementById('sender-address-label').textContent = isEnglish ? 'Address' : 'முகவரி';
+                document.getElementById('sender-phone-label').textContent = isEnglish ? 'Phone' : 'தொலைபேசி';
+                document.getElementById('sender-email-label').textContent = isEnglish ? 'Email' : 'மின்னஞ்சல்';
+                document.getElementById('sender-gst-label').textContent = isEnglish ? 'GST Number' : 'ஜிஎஸ்டி எண்';
+                document.getElementById('to-recipient-title').textContent = isEnglish ? 'To (Recipient)' : 'பெறுநர்';
+                document.getElementById('recipient-name-label').textContent = isEnglish ? 'Name/Company' : 'பெயர் / நிறுவனம்';
+                document.getElementById('recipient-address-label').textContent = isEnglish ? 'Address' : 'முகவரி';
+                document.getElementById('recipient-phone-label').textContent = isEnglish ? 'Phone' : 'தொலைபேசி';
+                document.getElementById('recipient-email-label').textContent = isEnglish ? 'Email' : 'மின்னஞ்சல்';
+                document.getElementById('recipient-gst-label').textContent = isEnglish ? 'GST Number' : 'ஜிஎஸ்டி எண்';
+
+                // Invoice Items Section
+                document.getElementById('invoice-items-title').textContent = isEnglish ? 'Invoice Items' : 'விலைப்பட்டியல் உருப்படிகள்';
+                document.getElementById('sl-no-header').textContent = isEnglish ? 'Sl No.' : 'வரிசை எண்';
+                document.getElementById('description-header').textContent = isEnglish ? 'Description' : 'விளக்கம்';
+                document.getElementById('hsn-code-header').textContent = isEnglish ? 'HSN Code' : 'எச்எஸ்என் குறியீடு';
+                document.getElementById('quantity-header').textContent = isEnglish ? 'Quantity' : 'எண்ணிக்கை';
+                document.getElementById('price-header').textContent = isEnglish ? 'Price (₹)' : 'விலை (₹)';
+                document.getElementById('gst-percent-header').textContent = isEnglish ? 'GST %' : 'ஜிஎஸ்டி %';
+                document.getElementById('gst-amount-header').textContent = isEnglish ? 'GST Amt' : 'ஜிஎஸ்டி தொகை';
+                document.getElementById('amount-header').textContent = isEnglish ? 'Amount (₹)' : 'தொகை (₹)';
+                document.getElementById('total-label').textContent = isEnglish ? 'Total:' : 'மொத்தம்:';
+                document.getElementById('amountInWords').textContent = isEnglish ? 'Zero Rupees Only' : 'பூஜ்ஜியம் ரூபாய் மட்டும்';
+
+                // Banking Details Section
+                document.getElementById('banking-details-title').textContent = isEnglish ? 'Banking Details' : 'வங்கி விவரங்கள்';
+                document.getElementById('bank-name-label').textContent = isEnglish ? 'Bank Name' : 'வங்கி பெயர்';
+                document.getElementById('account-number-label').textContent = isEnglish ? 'Account Number' : 'கணக்கு எண்';
+                document.getElementById('account-holder-name-label').textContent = isEnglish ? 'Account Holder Name' : 'கணக்கு வைத்திருப்பவர் பெயர்';
+                document.getElementById('ifsc-code-label').textContent = isEnglish ? 'IFSC Code' : 'ஐஎஃப்எஸ்சி குறியீடு';
+                document.getElementById('branch-details-label').textContent = isEnglish ? 'Branch Details' : 'கிளை விவரங்கள்';
+                document.getElementById('upi-id-label').textContent = isEnglish ? 'UPI ID' : 'யூபிஐ ஐடி';
+
+                // Additional Notes Section
+                document.getElementById('additional-notes-title').textContent = isEnglish ? 'Additional Notes' : 'கூடுதல் குறிப்புகள்';
+
+                // Footer
+                document.getElementById('footer-text').textContent = isEnglish ? 'Developed with ❤ by Nat' : 'நாட் அவர்களால் ❤ உடன் உருவாக்கப்பட்டது';
+            }
+
+            // Add Item functionality
+            const addItemBtn = document.getElementById('addItemBtn');
+            const itemsTable = document.getElementById('itemsTable');
+
+            addItemBtn.addEventListener('click', function () {
+                const newRow = itemsTable.querySelector('tbody tr:last-child').cloneNode(true);
+                const rowCount = itemsTable.querySelectorAll('tbody tr').length + 1;
+
+                newRow.querySelectorAll('input').forEach(input => {
+                    input.value = '';
+                });
+                newRow.querySelector('td:first-child').textContent = rowCount; // Update Sl No.
+                itemsTable.querySelector('tbody').appendChild(newRow);
+
+                // Add delete functionality to the new row
+                const deleteButton = newRow.querySelector('.delete-row');
+                deleteButton.addEventListener('click', function () {
+                    if (itemsTable.querySelectorAll('tbody tr').length > 1) {
+                        newRow.remove();
+                        updateSlNumbers();
+                        calculateTotal();
+                    } else {
+                        alert('Cannot delete the last row.');
+                    }
+                });
+
+                // Re-attach event listeners to the new row's inputs
+                attachEventListeners(newRow);
+                updateSlNumbers(); // Update Sl. Nos. after adding a row
+            });
+
+            // Delete Row functionality
+            itemsTable.addEventListener('click', function (event) {
+                if (event.target.classList.contains('delete-row')) {
+                    if (itemsTable.querySelectorAll('tbody tr').length > 1) {
+                        event.target.closest('tr').remove();
+                        updateSlNumbers();
+                        calculateTotal();
+                    } else {
+                        alert('Cannot delete the last row.');
+                    }
+                }
+            });
+
+            function updateSlNumbers() {
+                const rows = itemsTable.querySelectorAll('tbody tr');
+                rows.forEach((row, index) => {
+                    row.querySelector('td:first-child').textContent = index + 1;
+                });
+            }
+
+            // Calculation Functionality
+            function calculateRow(row) {
+                const qty = parseFloat(row.querySelector('.qty').value) || 0;
+                const price = parseFloat(row.querySelector('.price').value) || 0;
+                const gstPercent = parseFloat(row.querySelector('.gst-percent').value) || 0;
+
+                const amount = qty * price;
+                const gstAmount = amount * (gstPercent / 100);
+                const totalRowAmount = amount + gstAmount;
+
+                row.querySelector('.gst-amount').value = gstAmount.toFixed(2);
+                row.querySelector('.amount').value = amount.toFixed(2);
+
+                return totalRowAmount;
+            }
+
+            function calculateTotal() {
+                let total = 0;
+                const rows = itemsTable.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    total += calculateRow(row);
+                });
+
+                document.getElementById('totalAmount').textContent = '₹' + total.toFixed(2);
+                document.getElementById('amountInWords').textContent = convertNumberToWords(total);
+            }
+
+            function attachEventListeners(row) {
+                const qtyInput = row.querySelector('.qty');
+                const priceInput = row.querySelector('.price');
+                const gstPercentInput = row.querySelector('.gst-percent');
+
+                qtyInput.addEventListener('input', calculateTotal);
+                priceInput.addEventListener('input', calculateTotal);
+                gstPercentInput.addEventListener('input', calculateTotal);
+            }
+
+            // Attach event listeners to initial rows
+            itemsTable.querySelectorAll('tbody tr').forEach(attachEventListeners);
+
+            // Initial calculation
+            calculateTotal();
+
+            // Number to Words Conversion (up to 9999999)
+            function convertNumberToWords(num) {
+                const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+                const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+                const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+
+                function convertToWords(n) {
+                    if (n < 10) {
+                        return ones[n];
+                    } else if (n < 20) {
+                        return teens[n - 10];
+                    } else {
+                        const ten = Math.floor(n / 10);
+                        const one = n % 10;
+                        return tens[ten] + (one > 0 ? ' ' + ones[one] : '');
+                    }
+                }
+
+                if (num === 0) {
+                    return 'Zero';
+                }
+
+                let words = '';
+
+                if (num >= 10000000) {
+                    return "Number too large to convert.";
+                }
+
+                if ((num / 100000) >= 1) {
+                    words += convertToWords(Math.floor(num / 100000)) + " Lakh ";
+                    num %= 100000;
+                }
+
+                if ((num / 1000) >= 1) {
+                    words += convertToWords(Math.floor(num / 1000)) + " Thousand ";
+                    num %= 1000;
+                }
+
+                if ((num / 100) >= 1) {
+                    words += convertToWords(Math.floor(num / 100)) + " Hundred ";
+                    num %= 100;
+                }
+
+                if (num > 0) {
+                    if (words !== '') {
+                        words += "and ";
+                    }
+                    words += convertToWords(num);
+                }
+
+                return words + " Rupees Only";
+            }
+
+            // Logo upload functionality (remains unchanged)
+            const uploadLogoBtn = document.getElementById('uploadLogoBtn');
+            const logoInput = document.getElementById('logoInput');
+
+            uploadLogoBtn.addEventListener('click', function () {
+                logoInput.click();
+            });
+
+            logoInput.addEventListener('change', function () {
+                if (logoInput.files && logoInput.files[0]) {
+                    // Handle the uploaded logo here (e.g., display it, store it)
+                    console.log('Uploaded logo:', logoInput.files[0]);
+                }
+            });
+
+            // Generate Invoice functionality
+            document.getElementById('generateInvoiceBtn').addEventListener('click', function () {
+                // Collect invoice data
+                const currency = document.getElementById('currency').value;
+                const invoiceNumber = document.getElementById('invoiceNumber').value;
+                const dueDate = document.getElementById('dueDate').value;
+                const invoiceDate = document.getElementById('invoiceDate').value;
+                const senderName = document.getElementById('senderName').value;
+                const senderAddress = document.getElementById('senderAddress').value;
+                const senderPhone = document.getElementById('senderPhone').value;
+                const senderEmail = document.getElementById('senderEmail').value;
+                const senderGST = document.getElementById('senderGST').value;
+                const recipientName = document.getElementById('recipientName').value;
+                const recipientAddress = document.getElementById('recipientAddress').value;
+                const recipientPhone = document.getElementById('recipientPhone').value;
+                const recipientEmail = document.getElementById('recipientEmail').value;
+                const recipientGST = document.getElementById('recipientGST').value;
+                const bankName = document.getElementById('bankName').value;
+                const accountNumber = document.getElementById('accountNumber').value;
+                const accountHolderName = document.getElementById('accountHolderName').value;
+                const ifscCode = document.getElementById('ifscCode').value;
+                const branchDetails = document.getElementById('branchDetails').value;
+                const upiId = document.getElementById('upiId').value;
+                const additionalNotes = document.getElementById('additionalNotes').value;
+                const totalAmount = document.getElementById('totalAmount').textContent;
+                const amountInWords = document.getElementById('amountInWords').textContent;
+
+                // Collect items data
+                const items = [];
+                const itemRows = document.querySelectorAll('#itemsTable tbody tr');
+                itemRows.forEach(row => {
+                    const description = row.querySelector('td:nth-child(2) input').value;
+                    const hsnCode = row.querySelector('td:nth-child(3) input').value;
+                    const quantity = row.querySelector('td:nth-child(4) input').value;
+                    const price = row.querySelector('td:nth-child(5) input').value;
+                    const gstPercent = row.querySelector('td:nth-child(6) input').value;
+                    const gstAmount = row.querySelector('td:nth-child(7) input').value;
+                    const amount = row.querySelector('td:nth-child(8) input').value;
+
+                    items.push({
+                        description,
+                        hsnCode,
+                        quantity,
+                        price,
+                        gstPercent,
+                        gstAmount,
+                        amount
+                    });
+                });
+
+                // Create a new jsPDF instance
+                const pdf = new jspdf.JSPDF();
+
+                // Function to add text with auto-wrapping
+                function addWrappedText(text, x, y, width, fontSize = 10) {
+                    const textLines = pdf.splitTextToSize(text, width);
+                    pdf.setFontSize(fontSize);
+                    pdf.text(textLines, x, y);
+                    return y + textLines.length * fontSize / 3; // Adjust line height
+                }
+
+                // Define initial coordinates
+                let x = 20;
+                let y = 20;
+
+                // Set font
+                pdf.setFont('helvetica', 'normal');
+
+                // Header
+                pdf.setFontSize(20);
+                pdf.text('Invoice', x, y);
+                y += 15;
+
+                // Sender Information
+                pdf.setFontSize(12);
+                y = addWrappedText(senderName, x, y, 80);
+                y = addWrappedText(senderAddress, x, y, 80);
+                y = addWrappedText(`Phone: ${senderPhone}`, x, y, 80);
+                y = addWrappedText(`Email: ${senderEmail}`, x, y, 80);
+                if (senderGST) {
+                    y = addWrappedText(`GST: ${senderGST}`, x, y, 80);
+                }
+                y += 10;
+
+                // Recipient Information
+                pdf.setFontSize(12);
+                pdf.text('Bill to:', x, y);
+                y += 8;
+                y = addWrappedText(recipientName, x, y, 80);
+                y = addWrappedText(recipientAddress, x, y, 80);
+                y = addWrappedText(`Phone: ${recipientPhone}`, x, y, 80);
+                y = addWrappedText(`Email: ${recipientEmail}`, x, y, 80);
+                if (recipientGST) {
+                    y = addWrappedText(`GST: ${recipientGST}`, x, y, 80);
+                }
+                y += 10;
+
+                // Invoice Details
+                pdf.setFontSize(12);
+                pdf.text(`Invoice Number: ${invoiceNumber}`, x, y);
+                y += 8;
+                pdf.text(`Invoice Date: ${invoiceDate}`, x, y);
+                y += 8;
+                pdf.text(`Due Date: ${dueDate}`, x, y);
+                y += 15;
+
+                // Invoice Items Table Header
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFillColor(240, 240, 240);
+                pdf.rect(x, y, 170, 10, 'F');
+                pdf.text('Description', x + 5, y + 7);
+                pdf.text('HSN Code', x + 50, y + 7);
+                pdf.text('Quantity', x + 75, y + 7);
+                pdf.text('Price', x + 100, y + 7);
+                pdf.text('GST %', x + 125, y + 7);
+                pdf.text('Amount', x + 150, y + 7);
+                pdf.setFont('helvetica', 'normal');
+                y += 10;
+
+                // Invoice Items
+                let itemY = y;
+                let totalAmountValue
